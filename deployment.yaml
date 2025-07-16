@@ -1,0 +1,20 @@
+apiVersion: apps / v1
+kind: Deployment
+metadata:
+  name: my - nodejs - app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my - nodejs - app
+  template:
+    metadata:
+      labels:
+        app: my - nodejs - app
+    spec:
+      containers:
+        - name: web
+          # 이 부분은 젠킨스가 빌드할 때마다 동적으로 변경할 예정입니다.
+          image: your - dockerhub - username / my - nodejs - app: latest
+          ports:
+            - containerPort: 8080
