@@ -17,6 +17,12 @@ spec:
     volumeMounts:     
       - name: docker-config
         mountPath: /kaniko/.docker
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    imagePullPolicy: Always
+    command:
+    - cat
+    tty: true
   volumes:
     - name: docker-config
       projected:
