@@ -23,7 +23,7 @@ spec:
         mountPath: /home/jenkins/agent
         readOnly: false
   - name: kubectl
-    image: alpine/git:latest
+    image: bitnami/kubectl:latest
     imagePullPolicy: Always
     command:
     - cat
@@ -31,7 +31,7 @@ spec:
     resources:
       requests:
         cpu: "100m"
-        memory: "256Mi"
+        memory: "512Mi"
     volumeMounts:
       - name: workspace-volume
         mountPath: /home/jenkins/agent
@@ -56,29 +56,27 @@ spec:
         }
         stage('Build & Push with Kaniko') {
             steps {
-                // 1. Docker Hub 인증 정보를 사용하여 config.json 파일을 직접 생성합니다.
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    script {
-                        // Base64 인코딩된 인증 토큰 생성
-                        def authToken = "${DOCKER_USER}:${DOCKER_PASS}".bytes.encodeBase64().toString()
-                        // config.json 파일 내용 정의
-                        def dockerConfig = """
-                        {
-                            "auths": {
-                                "https://index.docker.io/v1/": {
-                                    "auth": "${authToken}"
-                                }
-                            }
-                        }
+                container(name: 'kubectl') {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh """
+                        set -ex
+
+                        echo "--- Checking kubectl version ---"
+                        kubectl version --client
+
+                        echo "--- Creating dockerhub-secret ---"
+                        kubectl create secret docker-registry dockerhub-secret \\
+                          --docker-server=https://index.docker.io/v1/ \\
+                          --docker-username=${DOCKER_USER} \\
+                          --docker-password=${DOCKER_PASS} \\
+                          --dry-run=client -o yaml | kubectl apply -f -
+
+                        echo "--- Secret created successfully ---"
                         """
-                        // 작업 공간에 .docker 디렉토리를 만들고 config.json 파일을 씁니다.
-                        sh "mkdir -p ${DOCKER_CONFIG}"
-                        writeFile(file: "${DOCKER_CONFIG}/config.json", text: dockerConfig)
                     }
                 }
                 // 2. kaniko 컨테이너에서 이미지 빌드 및 푸시
                 container(name: 'kaniko', shell: '/busybox/sh') {
-                    // Kaniko는 DOCKER_CONFIG 환경 변수를 자동으로 인식하여 인증에 사용합니다.
                     sh """
                         /kaniko/executor \\
                         --dockerfile=`pwd`/Dockerfile \\
@@ -86,6 +84,10 @@ spec:
                         --destination=${IMAGE_NAME}:${IMAGE_TAG} \\
                         --cache=true
                     """
+                }
+                // 3. kubectl 컨테이너에서 사용이 끝난 Secret 삭제
+                container(name: 'kubectl') {
+                    sh 'kubectl delete secret dockerhub-secret'
                 }
             }
         }
