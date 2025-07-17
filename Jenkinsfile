@@ -20,10 +20,12 @@ spec:
       - name: "workspace-volume"
         mountPath: "/home/jenkins/agent"
         readOnly: false
-    volumes:
-      - name: "workspace-volume"
-        emptyDir:
-          medium: ""
+  volumes:
+    - name: "workspace-volume"
+      emptyDir:
+        medium: ""
+  imagePullSecrets:
+    - name: regcred
  """
          }
      }
