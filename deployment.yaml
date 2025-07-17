@@ -1,20 +1,21 @@
-apiVersion: apps / v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: my - nodejs - app
+  name: my-nodejs-app
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: my - nodejs - app
+      app: my-nodejs-app
   template:
     metadata:
       labels:
-        app: my - nodejs - app
+        # 'app:' 뒤에 공백이 필요합니다.
+        app: my-nodejs-app
     spec:
       containers:
         - name: web
-          # 이 부분은 젠킨스가 빌드할 때마다 동적으로 변경할 예정입니다.
-          image: semtwo/my-nodejs-app:latest
+          # 이 부분은 Jenkinsfile에서 동적으로 이미지 태그를 변경할 것입니다.
+          image: semtwo/my-nodejs-app:initial
           ports:
             - containerPort: 8080
