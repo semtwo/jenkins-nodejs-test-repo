@@ -6,24 +6,24 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
-   - name: kaniko # 이제 이 컨테이너가 kubectl 역할도 겸합니다.
-     image: your-dockerhub-username/kaniko-kubectl:latest # 커스텀 이미지 사용
-     imagePullPolicy: Always
-     command:
-     - "/busybox/cat"
-     tty: true
-     resources:
-       requests:
-         cpu: "200m"
-         memory: "512Mi"
-     volumeMounts:
-       - name: workspace-volume
-         mountPath: "/home/jenkins/agent"
-         readOnly: false
-   volumes:
-     - emptyDir:
-         medium: ""
-       name: "workspace-volume"
+  - name: kaniko
+    image: semtwo/kaniko-kubectl:latest
+    imagePullPolicy: Always
+    command:
+    - "/busybox/cat"
+    tty: true
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+    volumeMounts:
+      - name: "workspace-volume"
+        mountPath: "/home/jenkins/agent"
+        readOnly: false
+    volumes:
+      - name: "workspace-volume"
+        emptyDir:
+          medium: ""
  """
          }
      }
