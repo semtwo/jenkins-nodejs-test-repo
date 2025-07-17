@@ -13,7 +13,11 @@ spec:
     imagePullPolicy: Always
     command:          
     - /busybox/cat
-    tty: true         
+    tty: true
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
     volumeMounts:     
       - name: docker-config
         mountPath: /kaniko/.docker
@@ -26,6 +30,10 @@ spec:
     command:
     - cat
     tty: true
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
     volumeMounts:
       - name: workspace-volume
         mountPath: /home/jenkins/agent
