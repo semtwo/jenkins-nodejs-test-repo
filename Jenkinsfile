@@ -1,9 +1,9 @@
 // 파이프라인 정의
 pipeline {
     agent {
-              kubernetes {
-                  // Pod 템플릿 정의
-                  yaml """
+            kubernetes {
+                // Pod 템플릿 정의
+                yaml """
 apiVersion: v1
 kind: Pod
 spec:
@@ -19,8 +19,6 @@ spec:
         cpu: "200m"
         memory: "512Mi"
     volumeMounts:     
-      - name: docker-config
-        mountPath: /kaniko/.docker
       - name: workspace-volume
         mountPath: /home/jenkins/agent
         readOnly: false
@@ -39,43 +37,48 @@ spec:
         mountPath: /home/jenkins/agent
         readOnly: false
   volumes:
-    - name: docker-config
-      projected:
-        sources:
-        - secret:
-          name: dockerhub-secret
-          items:
-            - key: .dockerconfigjson
-              path: config.json
     - name: workspace-volume
       emptyDir: {}
 """
          }
     }
     environment {
-        // 환경 변수 설정
         DOCKER_HUB_USERNAME = "semtwo"
         IMAGE_NAME = "${DOCKER_HUB_USERNAME}/my-nodejs-app"
-        // 빌드마다 고유한 태그를 생성 (예: my-nodejs-app:3)
         IMAGE_TAG = "${env.BUILD_ID}"
+        DOCKER_CONFIG = "/home/jenkins/agent/.docker"
     }
     stages {
         stage('Checkout') {
             steps {
-                // Git 저장소에서 소스 코드를 가져옵니다.
                 checkout scm
             }
         }
         stage('Build & Push with Kaniko') {
             steps {
-                // 1. kubectl 컨테이너에서 Docker Hub 인증용 Secret 생성
-                container(name: 'kubectl') {
-                    withCredentials([usernamePassword(credentialsId:'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable:'DOCKER_PASS')]) {
-                        sh 'kubectl create secret docker-registry dockerhub-secret --docker-server=https://index.docker.io/v1/ --docker-username=${DOCKER_USER} --docker-password=${DOCKER_PASS} --dry-run=client -o yaml | kubectl apply -f -'
+                // 1. Docker Hub 인증 정보를 사용하여 config.json 파일을 직접 생성합니다.
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    script {
+                        // Base64 인코딩된 인증 토큰 생성
+                        def authToken = "${DOCKER_USER}:${DOCKER_PASS}".bytes.encodeBase64().toString()
+                        // config.json 파일 내용 정의
+                        def dockerConfig = """
+                        {
+                            "auths": {
+                                "https://index.docker.io/v1/": {
+                                    "auth": "${authToken}"
+                                }
+                            }
+                        }
+                        """
+                        // 작업 공간에 .docker 디렉토리를 만들고 config.json 파일을 씁니다.
+                        sh "mkdir -p ${DOCKER_CONFIG}"
+                        writeFile(file: "${DOCKER_CONFIG}/config.json", text: dockerConfig)
                     }
                 }
                 // 2. kaniko 컨테이너에서 이미지 빌드 및 푸시
                 container(name: 'kaniko', shell: '/busybox/sh') {
+                    // Kaniko는 DOCKER_CONFIG 환경 변수를 자동으로 인식하여 인증에 사용합니다.
                     sh """
                         /kaniko/executor \\
                         --dockerfile=`pwd`/Dockerfile \\
@@ -83,10 +86,6 @@ spec:
                         --destination=${IMAGE_NAME}:${IMAGE_TAG} \\
                         --cache=true
                     """
-                }
-                // 3. kubectl 컨테이너에서 사용이 끝난 Secret 삭제
-                container(name: 'kubectl') {
-                    sh 'kubectl delete secret dockerhub-secret'
                 }
             }
         }
@@ -98,10 +97,8 @@ spec:
         }
         stage('Deploy to Kubernetes') {
             steps {
-                // 4. kubectl 컨테이너에서 최종 배포
                 container(name: 'kubectl') {
-                    withCredentials([file(credentialsId: 'kubeconfig',
-                        variable: 'KUBECONFIG_FILE')]) {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
                         sh 'export KUBECONFIG=${KUBECONFIG_FILE} && kubectl apply -f deployment.yaml && kubectl apply -f service.yaml'
                         echo "Deployment successful!"
                     }
