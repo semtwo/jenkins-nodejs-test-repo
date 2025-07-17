@@ -25,8 +25,8 @@ spec:
   - name: kubectl
     image: bitnami/kubectl:latest
     imagePullPolicy: Always
-    command:
-    - cat
+    command: ["/bin/bash"]
+    args: ["-c"]
     tty: true
     resources:
       requests:
