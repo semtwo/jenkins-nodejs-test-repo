@@ -17,12 +17,19 @@ spec:
     volumeMounts:     
       - name: docker-config
         mountPath: /kaniko/.docker
+      - name: workspace-volume
+        mountPath: /home/jenkins/agent
+        readOnly: false
   - name: kubectl
     image: bitnami/kubectl:latest
     imagePullPolicy: Always
     command:
     - cat
     tty: true
+    volumeMounts:
+      - name: workspace-volume
+        mountPath: /home/jenkins/agent
+        readOnly: false
   volumes:
     - name: docker-config
       projected:
@@ -32,6 +39,8 @@ spec:
           items:
             - key: .dockerconfigjson
               path: config.json
+    - name: workspace-volume
+      emptyDir: {}
 """
          }
     }
