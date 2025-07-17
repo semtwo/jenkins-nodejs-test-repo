@@ -60,21 +60,15 @@ spec:
         }
         stage('Build & Push with Kaniko') {
             steps {
-                // Kaniko 컨테이너 안에서 아래 스크립트를 실행합니다.
+                // 1. kubectl 컨테이너에서 Docker Hub 인증용 Secret 생성
+                container(name: 'kubectl') {
+                    withCredentials([usernamePassword(credentialsId:'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable:'DOCKER_PASS')]) 
+                    {
+                        sh 'kubectl create secret docker-registry dockerhub-secret --docker-server=https://index.docker.io/v1/ --docker-username=${DOCKER_USER} --docker-password=${DOCKER_PASS} --dry-run=client -o yaml | kubectl apply -f -'
+                    }
+                }
+                // 2. kaniko 컨테이너에서 이미지 빌드 및 푸시
                 container(name: 'kaniko', shell: '/busybox/sh') {
-                    // 1. Docker Hub 인증 정보를 Kubernetes Secret으로 생성합니다.
-                    withCredentials([usernamePassword(credentialsId:
-                        'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable:
-                        'DOCKER_PASS')]) {
-                        sh """
-                            kubectl create secret docker-registry dockerhub-secret \\
-                            --docker-server=https://index.docker.io/v1/ \\
-                            --docker-username=${DOCKER_USER} \\
-                            --docker-password=${DOCKER_PASS} \\
-                            --dry-run=client -o yaml | kubectl apply -f -
-                         """
-                     }
-                    // 2. Kaniko executor를 실행하여 이미지를 빌드하고 푸시합니다.
                     sh """
                         /kaniko/executor \\
                         --dockerfile=`pwd`/Dockerfile \\
@@ -82,28 +76,28 @@ spec:
                         --destination=${IMAGE_NAME}:${IMAGE_TAG} \\
                         --cache=true
                     """
-                    // 3. 사용이 끝난 Secret을 삭제합니다.
-                    sh "kubectl delete secret dockerhub-secret"
+                }
+                // 3. kubectl 컨테이너에서 사용이 끝난 Secret 삭제
+                container(name: 'kubectl') {
+                    sh 'kubectl delete secret dockerhub-secret'
                 }
             }
         }
         stage('Update Manifest') {
             steps {
-                // deployment.yaml 파일의 이미지 태그를 새로 빌드한 이미지 태그로 교체합니다.
                 sh "sed -i 's|image: .*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g' deployment.yaml"
                 echo "Updated deployment.yaml with new image: ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
         stage('Deploy to Kubernetes') {
             steps {
-                     // Kubernetes 인증 정보(kubeconfig)를 사용하여 배포합니다.
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
-                    sh """
-                        export KUBECONFIG=${KUBECONFIG_FILE}
-                        kubectl apply -f deployment.yaml
-                        kubectl apply -f service.yaml
+                // 4. kubectl 컨테이너에서 최종 배포
+                container(name: 'kubectl') {
+                    withCredentials([file(credentialsId: 'kubeconfig',
+                        variable: 'KUBECONFIG_FILE')]) {
+                        sh 'export KUBECONFIG=${KUBECONFIG_FILE} && kubectl apply -f deployment.yaml && kubectl apply -f service.yaml'
                         echo "Deployment successful!"
-                    """
+                    }
                 }
             }
         }
