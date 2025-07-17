@@ -1,3 +1,4 @@
+// 파이프라인 정의
 pipeline {
     agent {
               kubernetes {
