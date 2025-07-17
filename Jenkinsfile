@@ -62,8 +62,7 @@ spec:
             steps {
                 // 1. kubectl 컨테이너에서 Docker Hub 인증용 Secret 생성
                 container(name: 'kubectl') {
-                    withCredentials([usernamePassword(credentialsId:'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable:'DOCKER_PASS')]) 
-                    {
+                    withCredentials([usernamePassword(credentialsId:'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable:'DOCKER_PASS')]) {
                         sh 'kubectl create secret docker-registry dockerhub-secret --docker-server=https://index.docker.io/v1/ --docker-username=${DOCKER_USER} --docker-password=${DOCKER_PASS} --dry-run=client -o yaml | kubectl apply -f -'
                     }
                 }
