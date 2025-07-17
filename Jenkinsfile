@@ -7,27 +7,26 @@ pipeline {
 apiVersion: v1
 kind: Pod
 spec:
-    containers:
-    - name: kaniko
-        image: gcr.io/kaniko-project/executor:debug
-        imagePullPolicy: Always
-        # Kaniko 컨테이너가 바로 종료되지 않고 명령을 기다리도록 설정
-        command:          
-        - /busybox/cat
-        tty: true         
-        volumeMounts:     
-        - name: docker-config
-            mountPath: /kaniko/.docker
-    volumes:
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    imagePullPolicy: Always
+    command:          
+    - /busybox/cat
+    tty: true         
+    volumeMounts:     
+      - name: docker-config
+        mountPath: /kaniko/.docker
+  volumes:
     - name: docker-config
-        projected:
-            sources:
-            - secret:
-                name: dockerhub-secret
-                items:      
-                - key: .dockerconfigjson
-                    path: config.json
-         """
+      projected:
+        sources:
+        - secret:
+          name: dockerhub-secret
+          items:
+            - key: .dockerconfigjson
+              path: config.json
+"""
          }
     }
     environment {
