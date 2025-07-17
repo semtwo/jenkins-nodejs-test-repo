@@ -20,11 +20,12 @@ spec:
         memory: "512Mi"
     volumeMounts:     
       - name: workspace-volume
-        mountPath: /home/jenkins/agent
+        mountPath: "/home/jenkins/agent"
         readOnly: false
   - name: kubectl
     image: bitnami/kubectl:latest
-    imagePullPolicy: Always
+    imagePullPolicy: "Always"
+    command: ["/bin/bash"]
     tty: true
     resources:
       requests:
@@ -32,11 +33,12 @@ spec:
         memory: "512Mi"
     volumeMounts:
       - name: workspace-volume
-        mountPath: /home/jenkins/agent
+        mountPath: "/home/jenkins/agent"
         readOnly: false
   volumes:
-    - name: workspace-volume
-      emptyDir: {}
+    - name: "workspace-volume"
+      emptyDir:
+        medium: ""
 """
          }
     }
