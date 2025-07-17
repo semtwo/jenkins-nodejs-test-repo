@@ -23,7 +23,7 @@ spec:
         mountPath: /home/jenkins/agent
         readOnly: false
   - name: kubectl
-    image: bitnami/kubectl:latest
+    image: alpine/git:latest
     imagePullPolicy: Always
     command:
     - cat
