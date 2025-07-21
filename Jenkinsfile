@@ -8,11 +8,10 @@ pipeline {
 apiVersion: v1
 kind: Pod
 spec:
-  # =================================================================
-  # AccessDeniedException 해결을 위해 securityContext를 yaml에 직접 정의
-  # =================================================================
   securityContext:
     fsGroup: 1000
+    runAsUser: 1000
+    runAsGroup: 1000
 
   # initContainer를 yaml에 직접 정의
   initContainers:
@@ -23,7 +22,6 @@ spec:
         - name: tools
           mountPath: /tools
 
-  # 우리의 작업용 컨테이너 'main'을 yaml에 직접 정의
   containers:
     - name: main
       image: jenkins/inbound-agent:jdk17
@@ -31,14 +29,13 @@ spec:
       args: ["99d"]
       tty: true
       volumeMounts:
-        - name: shared-workspace
-          mountPath: /home/jenkins/agent/workspace
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
         - name: tools
           mountPath: /tools
 
-  # Pod가 사용할 볼륨들을 yaml에 직접 정의
   volumes:
-    - name: shared-workspace
+    - name: workspace-volume
       persistentVolumeClaim:
         claimName: jenkins-kaniko-shared-workspace
     - name: tools

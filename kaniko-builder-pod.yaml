@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kaniko-builder
+  namespace: jenkins
+  labels:
+    app: kaniko-builder
+spec:
+  restartPolicy: Always
+
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    command: ["/bin/sh", "-c", "sleep 100d"]
+    volumeMounts:
+      - name: shared-workspace
+        mountPath: /workspace
+
+  volumes:
+  - name: shared-workspace
+    persistentVolumeClaim:
+      claimName: jenkins-kaniko-shared-workspace
