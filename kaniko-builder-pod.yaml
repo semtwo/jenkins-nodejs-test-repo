@@ -14,7 +14,7 @@ spec:
     command: ["/bin/sh", "-c", "sleep 100d"]
     volumeMounts:
       - name: shared-workspace
-        mountPath: /workspace
+        mountPath: /home/jenkins/agent
 
   volumes:
   - name: shared-workspace
