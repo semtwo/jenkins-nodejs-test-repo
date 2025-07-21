@@ -55,6 +55,7 @@ spec:
 
     stages {
         stage('Checkout') {
+            agent { customWorkspace '/home/jenkins/agent' }
             steps {
                 // 이제 main 컨테이너가 정상적으로 생성되고, 권한 문제도 해결되어야 합니다.
                 checkout scm
@@ -62,6 +63,7 @@ spec:
         }
 
         stage('Build & Push with Kaniko') {
+            agent { customWorkspace '/home/jenkins/agent' }
             steps {
                 withCredentials([
                     usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
@@ -90,6 +92,7 @@ sh """
         }
 
         stage('Update Manifest') {
+            agent { customWorkspace '/home/jenkins/agent' }
             steps {
                 sh "sed -i 's|image: .*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g' deployment.yaml"
                 echo "Updated deployment.yaml with new image: ${IMAGE_NAME}:${IMAGE_TAG}"
@@ -97,6 +100,7 @@ sh """
         }
 
         stage('Deploy to Kubernetes') {
+            agent { customWorkspace '/home/jenkins/agent' }
             steps {
                 withCredentials([
                     file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')
