@@ -5,14 +5,9 @@ pipeline {
 apiVersion: v1
 kind: Pod
 spec:
-  # =================================================================
-  # 1. kubectl을 준비하는 initContainer 추가
-  # =================================================================
   initContainers:
   - name: install-kubectl
-    # kubectl이 포함된 경량 이미지를 사용합니다.
     image: bitnami/kubectl:latest
-    # 공유 볼륨에 kubectl 실행 파일을 복사하는 명령을 실행합니다.
     command:
       - "sh"
       - "-c"
@@ -26,12 +21,8 @@ spec:
       - name: "workspace-volume"
         mountPath: "/home/jenkins/agent"
         readOnly: false
-  # =================================================================
-  # 2. 메인 컨테이너는 kaniko 하나로 단순화
-  # =================================================================
-    33   containers:
+  containers:
    - name: kaniko
-     # 디버그 이미지는 쉘을 포함하고 있어 여러 명령어를 실행하기에 좋습니다.
      image: gcr.io/kaniko-project/executor:debug
      imagePullPolicy: Always
      command:
