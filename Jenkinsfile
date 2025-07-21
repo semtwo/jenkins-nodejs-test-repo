@@ -43,7 +43,7 @@ spec:
       emptyDir: {}
 """
         workspaceVolume emptyDir: null
-        workspaceDir '/workspace'
+        workingDir '/workspace'
         }
     }
 
