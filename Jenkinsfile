@@ -1,6 +1,7 @@
  pipeline {
       agent {
         kubernetes {
+            defaultContainer 'main'
             yaml """
      apiVersion: v1
      kind: Pod
@@ -13,22 +14,23 @@
        - name: tools
          mountPath: /tools
      containers:
-     - name: jnlp
+     - name: main
        image: jenkins/inbound-agent:3309.v27b_9314fd1a_4-1
-       # 이 에이전트도 공유 저장소에 접속해야 합니다.
+       command: ["sleep"]
+       args: ["99d"]
        volumeMounts:
        - name: shared-workspace
          mountPath: /home/jenkins/agent/workspace
        - name: tools
          mountPath: /tools
+
      volumes:
-     # 공유 저장소(PVC)를 이 Pod에 연결합니다.
      - name: shared-workspace
        persistentVolumeClaim:
          claimName: jenkins-kaniko-shared-workspace
      - name: tools
        emptyDir: {}
-     """
+"""
          }
      }
 
@@ -36,7 +38,6 @@
          DOCKER_HUB_USERNAME = "semtwo"
          IMAGE_NAME = "${DOCKER_HUB_USERNAME}/my-nodejs-app"
          IMAGE_TAG = "${env.BUILD_ID}"
-         // initContainer가 복사해 둔 kubectl을 PATH에 추가합니다.
          PATH = "/tools:${env.PATH}"
      }
 
