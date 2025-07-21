@@ -8,6 +8,7 @@ pipeline {
 apiVersion: v1
 kind: Pod
 spec:
+  serviceAccountName: jenkins-admin
   securityContext:
     fsGroup: 1000
     runAsUser: 1000
