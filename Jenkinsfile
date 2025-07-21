@@ -69,8 +69,12 @@ spec:
                         def authToken = "${DOCKER_USER}:${DOCKER_PASS}".bytes.encodeBase64().toString()
                         def dockerConfigJson = '{"auths":{"https://index.docker.io/v1/":{"auth":"' + authToken + '"}}}'
 
-                        sh """
+sh """
     set -ex
+    echo "==== Dockerfile 위치 전체 검색 ===="
+    find /home/jenkins/agent -name Dockerfile
+    echo "==== 현재 작업 디렉토리 파일 목록 ===="
+    ls -l /home/jenkins/agent/workspace/jenkins-pipline
     echo "--- Remotely executing Kaniko build ---"
     kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
       --dockerfile=/home/jenkins/agent/workspace/jenkins-pipline/Dockerfile \
