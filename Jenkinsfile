@@ -70,15 +70,15 @@ spec:
                         def dockerConfigJson = '{"auths":{"https://index.docker.io/v1/":{"auth":"' + authToken + '"}}}'
 
                         sh """
-                            set -ex
-                            echo "--- Remotely executing Kaniko build ---"
-                            kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
-                              --dockerfile=/workspace/Dockerfile \
-                              --context=/workspace \
-                              --destination=${IMAGE_NAME}:${IMAGE_TAG} \
-                              --cache=true \
-                              --build-arg DOCKER_CONFIG_JSON='${dockerConfigJson}'
-                        """
+    set -ex
+    echo "--- Remotely executing Kaniko build ---"
+    kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
+      --dockerfile=/home/jenkins/agent/workspace/jenkins-pipline/Dockerfile \
+      --context=/home/jenkins/agent/workspace/jenkins-pipline \
+      --destination=${IMAGE_NAME}:${IMAGE_TAG} \
+      --cache=true \
+      --build-arg DOCKER_CONFIG_JSON='${dockerConfigJson}'
+"""
                     }
                 }
             }
