@@ -31,7 +31,7 @@ spec:
       tty: true
       volumeMounts:
         - name: workspace-volume
-          mountPath: /home/jenkins/agent
+          mountPath: /workspace
         - name: tools
           mountPath: /tools
 
