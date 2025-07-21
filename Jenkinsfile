@@ -43,6 +43,7 @@ spec:
       emptyDir: {}
 """
         }
+        customWorkspace '/home/jenkins/agent'
     }
 
     environment {
@@ -74,11 +75,11 @@ sh """
     echo "==== Dockerfile 위치 전체 검색 ===="
     find /home/jenkins/agent -name Dockerfile
     echo "==== 현재 작업 디렉토리 파일 목록 ===="
-    ls -l /home/jenkins/agent/workspace/jenkins-pipline
+    ls -l /home/jenkins/agent
     echo "--- Remotely executing Kaniko build ---"
     kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
       --dockerfile=Dockerfile \
-      --context=/home/jenkins/agent/workspace/jenkins-pipline \
+      --context=/home/jenkins/agent \
       --destination=${IMAGE_NAME}:${IMAGE_TAG} \
       --cache=true \
       --build-arg DOCKER_CONFIG_JSON='${dockerConfigJson}'
