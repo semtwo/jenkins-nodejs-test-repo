@@ -22,29 +22,29 @@ spec:
         mountPath: "/home/jenkins/agent"
         readOnly: false
   containers:
-   - name: kaniko
-     image: gcr.io/kaniko-project/executor:debug
-     imagePullPolicy: Always
-     command:
-     - "/busybox/cat"
-     tty: true
-     resources:
-       requests:
-         cpu: "200m"
-         memory: "512Mi"
-     volumeMounts:
-       - name: "workspace-volume"
-         mountPath: "/home/jenkins/agent"
-         readOnly: false
-   volumes:
-     - name: "workspace-volume"
-       emptyDir:
-         medium: ""
-   imagePullSecrets:
-     - name: regcred
- """
-         }
-     }
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    imagePullPolicy: Always
+    command:
+    - "/busybox/cat"
+    tty: true
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+    volumeMounts:
+      - name: "workspace-volume"
+        mountPath: "/home/jenkins/agent"
+        readOnly: false
+  volumes:
+    - name: "workspace-volume"
+      emptyDir:
+        medium: ""
+  imagePullSecrets:
+    - name: regcred
+"""
+        }
+    }
     environment {
         DOCKER_HUB_USERNAME = "semtwo"
         IMAGE_NAME = "${DOCKER_HUB_USERNAME}/my-nodejs-app"
@@ -60,12 +60,15 @@ spec:
         }
         stage('Build & Push with Kaniko') {
             steps {
-                withCredentials([usernamePassword(credentialsId:
-       'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable:
-       'DOCKER_PASS')]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials', 
+                        usernameVariable: 'DOCKER_USER', 
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
                     script {
-                        def authToken = "${DOCKER_USER}:${DOCKER_PASS}"
-                        .bytes.encodeBase64().toString()
+                        def authToken = "${DOCKER_USER}:${DOCKER_PASS}".bytes.encodeBase64().toString()
                         def dockerConfig = """
                         {
                             "auths": {
@@ -76,8 +79,10 @@ spec:
                         }
                         """
                         sh "mkdir -p ${DOCKER_CONFIG}"
-                        writeFile(file: "${DOCKER_CONFIG}/config.json", text:
-       dockerConfig)
+                        writeFile(
+                            file: "${DOCKER_CONFIG}/config.json", 
+                            text: dockerConfig
+                        )
                     }
                 }
                 container(name: 'kaniko', shell: '/busybox/sh') {
@@ -94,21 +99,21 @@ spec:
         }
         stage('Update Manifest') {
             steps {
-                sh "sed -i 's|image: .*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g'
-                    deployment.yaml"
-                echo "Updated deployment.yaml with new image: ${IMAGE_NAME}:
-                    ${IMAGE_TAG}"
+                sh "sed -i 's|image: .*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g' deployment.yaml"
+                echo "Updated deployment.yaml with new image: ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
         stage('Deploy to Kubernetes') {
             steps {
-                //
                 container(name: 'kaniko') {
-                    withCredentials([file(credentialsId: 'kubeconfig',
-                        variable: 'KUBECONFIG_FILE')]) {
+                    withCredentials([
+                        file(
+                            credentialsId: 'kubeconfig',
+                            variable: 'KUBECONFIG_FILE'
+                        )
+                    ]) {
                         sh '''
-                          # PATH가 설정되었으므로 kubectl 명령이 바로
-                          동작합니다.
+                          # PATH가 설정되었으므로 kubectl 명령이 바로 동작합니다.
                           export KUBECONFIG=${KUBECONFIG_FILE}
 
                           # kubectl이 잘 설치되었는지 확인 (디버깅용)
