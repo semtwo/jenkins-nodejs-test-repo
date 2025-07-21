@@ -1,60 +1,49 @@
 pipeline {
     agent {
         kubernetes {
-            label 'kaniko-build-agent'
+            // 구버전 플러그인을 위해 yaml 블록을 사용합니다.
+            // 모든 정의를 이 안에 명시적으로 작성합니다.
             defaultContainer 'main'
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  # =================================================================
+  # AccessDeniedException 해결을 위해 securityContext를 yaml에 직접 정의
+  # =================================================================
+  securityContext:
+    fsGroup: 1000
 
-            // =================================================================
-            // 1. Pod 레벨의 보안 컨텍스트를 추가하여 파일 시스템 권한 문제를 해결합니다.
-            // =================================================================
-            securityContext {
-                fsGroup 1000
-            }
+  # initContainer를 yaml에 직접 정의
+  initContainers:
+    - name: install-kubectl
+      image: bitnami/kubectl:latest
+      command: ["sh", "-c", "cp /opt/bitnami/kubectl/bin/kubectl /tools/ && chmod +x /tools/kubectl"]
+      volumeMounts:
+        - name: tools
+          mountPath: /tools
 
-            // 작업용 컨테이너(main)
-            containerTemplate {
-                name 'main'
-                image 'jenkins/inbound-agent:3309.v27b_9314fd1a_4-1'
-                command 'sleep'
-                args '99d'
-                ttyEnabled true
-                volumeMounts {
-                    volumeMount {
-                        mountPath '/home/jenkins/agent/workspace'
-                        name 'shared-workspace'
-                    }
-                    volumeMount {
-                        mountPath '/tools'
-                        name 'tools'
-                    }
-                }
-            }
+  # 우리의 작업용 컨테이너 'main'을 yaml에 직접 정의
+  containers:
+    - name: main
+      image: jenkins/inbound-agent:3309.v27b_9314fd1a_4-1
+      command: ["sleep"]
+      args: ["99d"]
+      tty: true
+      volumeMounts:
+        - name: shared-workspace
+          mountPath: /home/jenkins/agent/workspace
+        - name: tools
+          mountPath: /tools
 
-            // kubectl을 준비하는 initContainer
-            initContainerTemplate {
-                name 'install-kubectl'
-                image 'bitnami/kubectl:latest'
-                command 'sh'
-                args '-c "cp /opt/bitnami/kubectl/bin/kubectl /tools/ && chmod +x /tools/kubectl"'
-                volumeMounts {
-                    volumeMount {
-                        mountPath '/tools'
-                        name 'tools'
-                    }
-                }
-            }
-
-            // Pod가 사용할 볼륨들
-            volumes {
-                persistentVolumeClaim {
-                    claimName 'jenkins-kaniko-shared-workspace'
-                    readOnly false
-                }
-                emptyDirVolume {
-                    mountPath '/tools'
-                    memory false
-                }
-            }
+  # Pod가 사용할 볼륨들을 yaml에 직접 정의
+  volumes:
+    - name: shared-workspace
+      persistentVolumeClaim:
+        claimName: jenkins-kaniko-shared-workspace
+    - name: tools
+      emptyDir: {}
+"""
         }
     }
 
@@ -68,22 +57,15 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // 소스 코드를 공유 저장소(/home/jenkins/agent/workspace)에 내려받습니다.
+                // 이제 main 컨테이너가 정상적으로 생성되고, 권한 문제도 해결되어야 합니다.
                 checkout scm
             }
         }
 
-        // =================================================================
-        // 2. Kaniko 빌드를 원격으로 실행
-        // =================================================================
         stage('Build & Push with Kaniko') {
             steps {
                 withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-credentials',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )
+                    usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
                 ]) {
                     script {
                         def authToken = "${DOCKER_USER}:${DOCKER_PASS}".bytes.encodeBase64().toString()
@@ -106,7 +88,6 @@ pipeline {
 
         stage('Update Manifest') {
             steps {
-                // 이 단계는 Jenkins 에이전트에서 실행되며, 공유 저장소의 파일을 수정합니다.
                 sh "sed -i 's|image: .*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g' deployment.yaml"
                 echo "Updated deployment.yaml with new image: ${IMAGE_NAME}:${IMAGE_TAG}"
             }
@@ -115,10 +96,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([
-                    file(
-                        credentialsId: 'kubeconfig',
-                        variable: 'KUBECONFIG_FILE'
-                    )
+                    file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')
                 ]) {
                     sh '''
                       export KUBECONFIG=${KUBECONFIG_FILE}
