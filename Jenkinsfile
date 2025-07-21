@@ -26,7 +26,7 @@ spec:
   # 우리의 작업용 컨테이너 'main'을 yaml에 직접 정의
   containers:
     - name: main
-      image: jenkins/inbound-agent:3309.v27b_9314fd1a_4-1
+      image: jenkins/inbound-agent:jdk17
       command: ["sleep"]
       args: ["99d"]
       tty: true
