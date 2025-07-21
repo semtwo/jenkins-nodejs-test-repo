@@ -1,35 +1,60 @@
 pipeline {
     agent {
         kubernetes {
+            label 'kaniko-build-agent'
             defaultContainer 'main'
-            yaml """
-apiVersion: v1
-kind: Pod
-spec:
-  initContainers:
-    - name: install-kubectl
-      image: bitnami/kubectl:latest
-      command: ["sh", "-c", "cp /opt/bitnami/kubectl/bin/kubectl /tools/ && chmod +x /tools/kubectl"]
-      volumeMounts:
-        - name: tools
-          mountPath: /tools
-  containers:
-    - name: main
-      image: jenkins/inbound-agent:3309.v27b_9314fd1a_4-1
-      command: ["sleep"]
-      args: ["99d"]
-      volumeMounts:
-        - name: shared-workspace
-          mountPath: /home/jenkins/agent/workspace
-        - name: tools
-          mountPath: /tools
-  volumes:
-    - name: shared-workspace
-      persistentVolumeClaim:
-        claimName: jenkins-kaniko-shared-workspace
-    - name: tools
-      emptyDir: {}
-"""
+
+            // =================================================================
+            // 1. Pod 레벨의 보안 컨텍스트를 추가하여 파일 시스템 권한 문제를 해결합니다.
+            // =================================================================
+            securityContext {
+                fsGroup 1000
+            }
+
+            // 작업용 컨테이너(main)
+            containerTemplate {
+                name 'main'
+                image 'jenkins/inbound-agent:3309.v27b_9314fd1a_4-1'
+                command 'sleep'
+                args '99d'
+                ttyEnabled true
+                volumeMounts {
+                    volumeMount {
+                        mountPath '/home/jenkins/agent/workspace'
+                        name 'shared-workspace'
+                    }
+                    volumeMount {
+                        mountPath '/tools'
+                        name 'tools'
+                    }
+                }
+            }
+
+            // kubectl을 준비하는 initContainer
+            initContainerTemplate {
+                name 'install-kubectl'
+                image 'bitnami/kubectl:latest'
+                command 'sh'
+                args '-c "cp /opt/bitnami/kubectl/bin/kubectl /tools/ && chmod +x /tools/kubectl"'
+                volumeMounts {
+                    volumeMount {
+                        mountPath '/tools'
+                        name 'tools'
+                    }
+                }
+            }
+
+            // Pod가 사용할 볼륨들
+            volumes {
+                persistentVolumeClaim {
+                    claimName 'jenkins-kaniko-shared-workspace'
+                    readOnly false
+                }
+                emptyDirVolume {
+                    mountPath '/tools'
+                    memory false
+                }
+            }
         }
     }
 
@@ -55,23 +80,18 @@ spec:
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'dockerhub-credentials', 
-                        usernameVariable: 'DOCKER_USER', 
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
                     script {
-                        // Kaniko Pod는 Docker 인증 정보가 필요 없으므로, 여기서는 변수만 사용합니다.
-                        // 실제 인증은 Kaniko Pod가 아닌, Kaniko Executor가 직접 처리합니다.
                         def authToken = "${DOCKER_USER}:${DOCKER_PASS}".bytes.encodeBase64().toString()
-                        def dockerConfigJson = """{"auths":{"https://index.docker.io/v1/":{"auth":"${authToken}"}}}"""
+                        def dockerConfigJson = '{"auths":{"https://index.docker.io/v1/":{"auth":"' + authToken + '"}}}'
 
-                        // kubectl exec 명령어로 kaniko-builder Pod에게 원격으로 빌드를 지시합니다.
                         sh """
                             set -ex
-
                             echo "--- Remotely executing Kaniko build ---"
-
                             kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
                               --dockerfile=/workspace/Dockerfile \
                               --context=/workspace \
@@ -96,13 +116,12 @@ spec:
             steps {
                 withCredentials([
                     file(
-                        credentialsId: 'kubeconfig', 
+                        credentialsId: 'kubeconfig',
                         variable: 'KUBECONFIG_FILE'
                     )
                 ]) {
                     sh '''
                       export KUBECONFIG=${KUBECONFIG_FILE}
-
                       echo "--- Applying manifests ---"
                       kubectl apply -f deployment.yaml
                       kubectl apply -f service.yaml
