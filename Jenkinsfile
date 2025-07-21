@@ -50,9 +50,6 @@ spec:
         IMAGE_NAME = "${DOCKER_HUB_USERNAME}/my-nodejs-app"
         IMAGE_TAG = "${env.BUILD_ID}"
         DOCKER_CONFIG = "/home/jenkins/agent/.docker"
-        # =================================================================
-        # 3. 공유 볼륨에 복사된 kubectl을 PATH에 추가
-        # =================================================================
         PATH = "/home/jenkins/agent/tools:${env.PATH}"
     }
     stages {
@@ -106,10 +103,6 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 //
-                =================================================================
-                # 4. 이제 kaniko 컨테이너에서 kubectl을 바로 사용
-                #
-                =================================================================
                 container(name: 'kaniko') {
                     withCredentials([file(credentialsId: 'kubeconfig',
                         variable: 'KUBECONFIG_FILE')]) {
