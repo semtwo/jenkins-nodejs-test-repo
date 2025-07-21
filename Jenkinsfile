@@ -2,48 +2,50 @@ pipeline {
     agent {
         kubernetes {
             yaml """
-apiVersion: v1
-kind: Pod
-spec:
-  initContainers:
-  - name: install-kubectl
-    image: bitnami/kubectl:latest
-    command:
-      - "sh"
-      - "-c"
-      - |
+      apiVersion: v1
+      kind: Pod
+      spec:
+      initContainers:
+      - name: install-kubectl
+        image: bitnami/kubectl:latest
+        command:
+        - "sh"
+        - "-c"
+        - |
         echo "Copying kubectl to shared volume..."
         mkdir -p /home/jenkins/agent/tools
         cp /opt/bitnami/kubectl/bin/kubectl /home/jenkins/agent/tools/kubectl
         chmod +x /home/jenkins/agent/tools/kubectl
         echo "kubectl is ready."
-    volumeMounts:
-      - name: "workspace-volume"
-        mountPath: "/home/jenkins/agent"
-        readOnly: false
-  containers:
-  - name: kaniko
-    image: gcr.io/kaniko-project/executor:debug
-    imagePullPolicy: Always
-    command:
-    - "/busybox/cat"
-    tty: true
-    resources:
-      requests:
+        volumeMounts:
+        - name: "workspace-volume"
+          mountPath: "/home/jenkins/agent"
+          readOnly: false
+
+      containers:
+      - name: kaniko
+        image: gcr.io/kaniko-project/executor:debug
+        imagePullPolicy: Always
+        command:
+        - "sleep"
+        args:
+        - "99d"
+        resources:
+        requests:
         cpu: "200m"
         memory: "512Mi"
-    volumeMounts:
+        volumeMounts:
+        - name: "workspace-volume"
+          mountPath: "/home/jenkins/agent"
+          readOnly: false
+      volumes:
       - name: "workspace-volume"
-        mountPath: "/home/jenkins/agent"
-        readOnly: false
-  volumes:
-    - name: "workspace-volume"
-      emptyDir:
-        medium: ""
-  imagePullSecrets:
-    - name: regcred
-"""
-        }
+        emptyDir:
+          medium: ""
+      imagePullSecrets:
+      - name: regcred
+ """
+         }
     }
     environment {
         DOCKER_HUB_USERNAME = "semtwo"
@@ -60,13 +62,7 @@ spec:
         }
         stage('Build & Push with Kaniko') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-credentials', 
-                        usernameVariable: 'DOCKER_USER', 
-                        passwordVariable: 'DOCKER_PASS'
-                    )
-                ]) {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     script {
                         def authToken = "${DOCKER_USER}:${DOCKER_PASS}".bytes.encodeBase64().toString()
                         def dockerConfig = """
@@ -79,10 +75,7 @@ spec:
                         }
                         """
                         sh "mkdir -p ${DOCKER_CONFIG}"
-                        writeFile(
-                            file: "${DOCKER_CONFIG}/config.json", 
-                            text: dockerConfig
-                        )
+                        writeFile(file: "${DOCKER_CONFIG}/config.json", text: dockerConfig)
                     }
                 }
                 container(name: 'kaniko', shell: '/busybox/sh') {
@@ -106,17 +99,10 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 container(name: 'kaniko') {
-                    withCredentials([
-                        file(
-                            credentialsId: 'kubeconfig',
-                            variable: 'KUBECONFIG_FILE'
-                        )
-                    ]) {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
                         sh '''
-                          # PATH가 설정되었으므로 kubectl 명령이 바로 동작합니다.
                           export KUBECONFIG=${KUBECONFIG_FILE}
 
-                          # kubectl이 잘 설치되었는지 확인 (디버깅용)
                           echo "--- Checking kubectl version ---"
                           kubectl version --client
 
