@@ -86,7 +86,7 @@ spec:
                         )
                     }
                 }
-                container(name: 'kaniko', shell: '/busybox/sh') {
+                container(name: 'kaniko') {
                     sh """
                         set -ex
                         /kaniko/executor \\
