@@ -77,7 +77,7 @@ sh """
     ls -l /home/jenkins/agent/workspace/jenkins-pipline
     echo "--- Remotely executing Kaniko build ---"
     kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
-      --dockerfile=/home/jenkins/agent/workspace/jenkins-pipline/Dockerfile \
+      --dockerfile=Dockerfile \
       --context=/home/jenkins/agent/workspace/jenkins-pipline \
       --destination=${IMAGE_NAME}:${IMAGE_TAG} \
       --cache=true \
