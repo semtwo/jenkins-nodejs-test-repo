@@ -42,6 +42,8 @@ spec:
     - name: tools
       emptyDir: {}
 """
+        workspaceVolume emptyDir: null
+        workspaceDir '/workspace'
         }
     }
 
