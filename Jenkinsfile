@@ -38,7 +38,7 @@ spec:
   volumes:
     - name: workspace-volume
       persistentVolumeClaim:
-        claimName: jenkins-kaniko-shared-workspace
+        claimName: jenkins-pv-claim
     - name: tools
       emptyDir: {}
 """
