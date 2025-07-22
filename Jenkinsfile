@@ -25,6 +25,8 @@ podTemplate(
                 # kubectl을 현재 디렉토리에 설치
                 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                 chmod +x kubectl
+                # PATH에 현재 디렉토리 추가
+                export PATH="${PWD}:${PATH}"
                 ./kubectl version --client
             '''
         }
@@ -34,25 +36,39 @@ podTemplate(
         }
 
         stage('Build & Push with Kaniko') {
-            sh """
-                set -ex
-                export PATH="${PWD}:${PATH}"
-                
-                echo "==== Jenkins Pod에서 Dockerfile 위치 검색 ===="
-                find ${env.WORKSPACE} -name Dockerfile
-                echo "==== Jenkins Pod에서 현재 작업 디렉토리 파일 목록 ===="
-                ls -l ${env.WORKSPACE}
+            withCredentials([
+                usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
+            ]) {
+                script {
+                    def authToken = "${DOCKER_USER}:${DOCKER_PASS}".bytes.encodeBase64().toString()
+                    def dockerConfigJson = '{"auths":{"https://index.docker.io/v1/":{"auth":"' + authToken + '"}}}'
 
-                echo "==== Kaniko Pod에서 파일 목록 확인 ===="
-                ./kubectl exec kaniko-builder --namespace jenkins -- ls -l ${env.WORKSPACE}
+                    sh """
+                        set -ex
+                        # PATH에 kubectl 경로 추가
+                        export PATH="${PWD}:${PATH}"
+                        
+                        echo "==== Jenkins Pod에서 Dockerfile 위치 검색 ===="
+                        find ${env.WORKSPACE} -name Dockerfile
+                        echo "==== Jenkins Pod에서 현재 작업 디렉토리 파일 목록 ===="
+                        ls -l ${env.WORKSPACE}
 
-                echo "--- Remotely executing Kaniko build ---"
-                ./kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \\
-                  --dockerfile=Dockerfile \\
-                  --context=${env.WORKSPACE} \\
-                  --destination=${env.IMAGE_NAME}:${env.IMAGE_TAG} \\
-                  --cache=true
-            """
+                        echo "==== Kaniko Pod에서 파일 목록 확인 ===="
+                        ./kubectl exec kaniko-builder --namespace jenkins -- ls -l ${env.WORKSPACE}
+
+                        echo "==== Kaniko Pod에서 Dockerfile 위치 검색 ===="
+                        ./kubectl exec kaniko-builder --namespace jenkins -- find ${env.WORKSPACE} -name Dockerfile
+
+                        echo "--- Remotely executing Kaniko build ---"
+                        ./kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \\
+                          --dockerfile=Dockerfile \\
+                          --context=${env.WORKSPACE} \\
+                          --destination=${env.IMAGE_NAME}:${env.IMAGE_TAG} \\
+                          --cache=true \\
+                          --build-arg DOCKER_CONFIG_JSON='${dockerConfigJson}'
+                    """
+                }
+            }
         }
 
         stage('Update Manifest') {
