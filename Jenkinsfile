@@ -72,30 +72,13 @@ spec:
 sh """
     set -ex
     echo "==== Jenkins Pod에서 Dockerfile 위치 검색 ===="
-    find /home/jenkins/agent -name Dockerfile
+    find ${env.WORKSPACE} -name Dockerfile
     echo "==== Jenkins Pod에서 현재 작업 디렉토리 파일 목록 ===="
-    ls -l /home/jenkins/agent/workspace/jenkins-pipline
-    
-    echo "==== Kaniko Pod에서 파일 확인 ===="
-    kubectl exec kaniko-builder --namespace jenkins -- ls -la /home/jenkins/agent/workspace/jenkins-pipline || echo "Kaniko Pod에서 디렉토리가 없음"
-    
-    echo "==== Kaniko Pod에서 전체 경로 검색 ===="
-    kubectl exec kaniko-builder --namespace jenkins -- find /home/jenkins/agent -name Dockerfile || echo "Kaniko Pod에서 Dockerfile을 찾을 수 없음"
-    
-    echo "==== Kaniko Pod에서 /home/jenkins/agent 디렉토리 확인 ===="
-    kubectl exec kaniko-builder --namespace jenkins -- ls -la /home/jenkins/agent || echo "Kaniko Pod에서 /home/jenkins/agent 디렉토리가 없음"
-    
-    echo "==== PVC 상태 확인 ===="
-    kubectl get pvc -n jenkins
-    kubectl describe pvc jenkins-pv-claim -n jenkins
-    
-    echo "==== 현재 Jenkins 파이프라인 Pod의 PVC 확인 ===="
-    kubectl get pod -n jenkins -o yaml | grep -A 10 -B 10 "jenkins-pipline"
-    
+    ls -l ${env.WORKSPACE}
     echo "--- Remotely executing Kaniko build ---"
     kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
       --dockerfile=Dockerfile \
-      --context=/home/jenkins/agent/workspace/jenkins-pipline \
+      --context=${env.WORKSPACE} \
       --destination=${IMAGE_NAME}:${IMAGE_TAG} \
       --cache=true \
       --build-arg DOCKER_CONFIG_JSON='${dockerConfigJson}'
