@@ -43,7 +43,6 @@ spec:
       emptyDir: {}
 """
         }
-        customWorkspace '/home/jenkins/agent'
     }
 
     environment {
@@ -55,7 +54,6 @@ spec:
 
     stages {
         stage('Checkout') {
-            agent { customWorkspace '/home/jenkins/agent' }
             steps {
                 // 이제 main 컨테이너가 정상적으로 생성되고, 권한 문제도 해결되어야 합니다.
                 checkout scm
@@ -63,7 +61,6 @@ spec:
         }
 
         stage('Build & Push with Kaniko') {
-            agent { customWorkspace '/home/jenkins/agent' }
             steps {
                 withCredentials([
                     usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
@@ -77,11 +74,11 @@ sh """
     echo "==== Dockerfile 위치 전체 검색 ===="
     find /home/jenkins/agent -name Dockerfile
     echo "==== 현재 작업 디렉토리 파일 목록 ===="
-    ls -l /home/jenkins/agent
+    ls -l /home/jenkins/agent/workspace/jenkins-pipline
     echo "--- Remotely executing Kaniko build ---"
     kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
       --dockerfile=Dockerfile \
-      --context=/home/jenkins/agent \
+      --context=/home/jenkins/agent/workspace/jenkins-pipline \
       --destination=${IMAGE_NAME}:${IMAGE_TAG} \
       --cache=true \
       --build-arg DOCKER_CONFIG_JSON='${dockerConfigJson}'
@@ -92,7 +89,6 @@ sh """
         }
 
         stage('Update Manifest') {
-            agent { customWorkspace '/home/jenkins/agent' }
             steps {
                 sh "sed -i 's|image: .*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g' deployment.yaml"
                 echo "Updated deployment.yaml with new image: ${IMAGE_NAME}:${IMAGE_TAG}"
@@ -100,7 +96,6 @@ sh """
         }
 
         stage('Deploy to Kubernetes') {
-            agent { customWorkspace '/home/jenkins/agent' }
             steps {
                 withCredentials([
                     file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')
