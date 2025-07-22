@@ -8,17 +8,8 @@ podTemplate(
             ttyEnabled: true
         )
     ],
-    initContainers: [
-        containerTemplate(
-            name: 'install-kubectl',
-            image: 'bitnami/kubectl:latest',
-            command: 'sh',
-            args: '-c "cp /opt/bitnami/kubectl/bin/kubectl /tools/ && chmod +x /tools/kubectl"'
-        )
-    ],
     volumes: [
-        hostPathVolume(hostPath: '/tmp/jenkins-workspace', mountPath: '/home/jenkins/agent'),
-        emptyDirVolume(mountPath: '/tools')
+        hostPathVolume(hostPath: '/tmp/jenkins-workspace', mountPath: '/home/jenkins/agent')
     ],
     serviceAccount: 'jenkins-admin'
 ) {
@@ -28,7 +19,16 @@ podTemplate(
         env.DOCKER_HUB_USERNAME = "semtwo"
         env.IMAGE_NAME = "${env.DOCKER_HUB_USERNAME}/my-nodejs-app"
         env.IMAGE_TAG = "${env.BUILD_ID}"
-        env.PATH = "/tools:${env.PATH}"
+
+        stage('Setup Tools') {
+            sh '''
+                # kubectl 설치
+                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                chmod +x kubectl
+                sudo mv kubectl /usr/local/bin/
+                kubectl version --client
+            '''
+        }
 
         stage('Checkout') {
             checkout scm
