@@ -2,7 +2,6 @@ pipeline {
     agent {
         kubernetes {
             defaultContainer 'main'
-            workspaceVolume persistentVolumeClaim(claimName: 'jenkins-pv-claim', readOnly: false)
             yaml """
 apiVersion: v1
 kind: Pod
@@ -28,8 +27,17 @@ spec:
       args: ["99d"]
       tty: true
       volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
         - name: tools
           mountPath: /tools
+
+  volumes:
+    - name: workspace-volume
+      persistentVolumeClaim:
+        claimName: jenkins-pv-claim
+    - name: tools
+      emptyDir: {}
 """
         }
     }
@@ -69,7 +77,6 @@ spec:
 
                             echo "==== Kaniko Pod에서 Dockerfile 위치 검색 ===="
                             kubectl exec kaniko-builder --namespace jenkins -- find /home/jenkins/agent/workspace/jenkins-pipline-kaniko -name Dockerfile
-
 
                             echo "--- Remotely executing Kaniko build ---"
                             kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \\
