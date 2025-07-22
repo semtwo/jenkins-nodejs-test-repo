@@ -48,17 +48,6 @@ podTemplate(
                         # PATH에 kubectl 경로 추가
                         export PATH="${PWD}:${PATH}"
                         
-                        echo "==== Jenkins Pod에서 Dockerfile 위치 검색 ===="
-                        find ${env.WORKSPACE} -name Dockerfile
-                        echo "==== Jenkins Pod에서 현재 작업 디렉토리 파일 목록 ===="
-                        ls -l ${env.WORKSPACE}
-
-                        echo "==== Kaniko Pod에서 파일 목록 확인 ===="
-                        ./kubectl exec kaniko-builder --namespace jenkins -- ls -l ${env.WORKSPACE}
-
-                        echo "==== Kaniko Pod에서 Dockerfile 위치 검색 ===="
-                        ./kubectl exec kaniko-builder --namespace jenkins -- find ${env.WORKSPACE} -name Dockerfile
-
                         echo "--- Remotely executing Kaniko build ---"
                         ./kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \\
                           --dockerfile=Dockerfile \\
