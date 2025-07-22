@@ -20,8 +20,7 @@ podTemplate(
         hostPathVolume(hostPath: '/tmp/jenkins-workspace', mountPath: '/home/jenkins/agent'),
         emptyDirVolume(mountPath: '/tools')
     ],
-    serviceAccount: 'jenkins-admin',
-    securityContext: podSecurityContext(fsGroup: 1000, runAsUser: 1000, runAsGroup: 1000)
+    serviceAccount: 'jenkins-admin'
 ) {
     node(POD_LABEL) {
         
