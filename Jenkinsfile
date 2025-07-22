@@ -71,10 +71,17 @@ spec:
 
 sh """
     set -ex
-    echo "==== Dockerfile 위치 전체 검색 ===="
+    echo "==== Jenkins Pod에서 Dockerfile 위치 검색 ===="
     find /home/jenkins/agent -name Dockerfile
-    echo "==== 현재 작업 디렉토리 파일 목록 ===="
+    echo "==== Jenkins Pod에서 현재 작업 디렉토리 파일 목록 ===="
     ls -l /home/jenkins/agent/workspace/jenkins-pipline
+    
+    echo "==== Kaniko Pod에서 파일 확인 ===="
+    kubectl exec kaniko-builder --namespace jenkins -- ls -la /home/jenkins/agent/workspace/jenkins-pipline || echo "Kaniko Pod에서 디렉토리가 없음"
+    
+    echo "==== Kaniko Pod에서 전체 경로 검색 ===="
+    kubectl exec kaniko-builder --namespace jenkins -- find /home/jenkins/agent -name Dockerfile || echo "Kaniko Pod에서 Dockerfile을 찾을 수 없음"
+    
     echo "--- Remotely executing Kaniko build ---"
     kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
       --dockerfile=Dockerfile \
