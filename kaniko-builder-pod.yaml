@@ -15,9 +15,17 @@ spec:
     volumeMounts:
       - name: shared-workspace
         mountPath: /home/jenkins/agent
+      - name: docker-config
+        mountPath: /kaniko/.docker
 
   volumes:
   - name: shared-workspace
     hostPath:
       path: /tmp/jenkins-workspace
       type: DirectoryOrCreate
+  - name: docker-config
+    secret:
+      secretName: regcred
+      items:
+        - key: .dockerconfigjson
+          path: config.json
