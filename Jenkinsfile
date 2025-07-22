@@ -1,9 +1,8 @@
 pipeline {
     agent {
         kubernetes {
-            // 구버전 플러그인을 위해 yaml 블록을 사용합니다.
-            // 모든 정의를 이 안에 명시적으로 작성합니다.
             defaultContainer 'main'
+            workspaceVolume persistentVolumeClaim(claimName: 'jenkins-pv-claim', readOnly: false)
             yaml """
 apiVersion: v1
 kind: Pod
@@ -14,7 +13,6 @@ spec:
     runAsUser: 1000
     runAsGroup: 1000
 
-  # initContainer를 yaml에 직접 정의
   initContainers:
     - name: install-kubectl
       image: bitnami/kubectl:latest
@@ -30,17 +28,8 @@ spec:
       args: ["99d"]
       tty: true
       volumeMounts:
-        - name: workspace-volume
-          mountPath: /home/jenkins/agent
         - name: tools
           mountPath: /tools
-
-  volumes:
-    - name: workspace-volume
-      persistentVolumeClaim:
-        claimName: jenkins-pv-claim
-    - name: tools
-      emptyDir: {}
 """
         }
     }
@@ -55,7 +44,6 @@ spec:
     stages {
         stage('Checkout') {
             steps {
-                // 이제 main 컨테이너가 정상적으로 생성되고, 권한 문제도 해결되어야 합니다.
                 checkout scm
             }
         }
@@ -69,20 +57,28 @@ spec:
                         def authToken = "${DOCKER_USER}:${DOCKER_PASS}".bytes.encodeBase64().toString()
                         def dockerConfigJson = '{"auths":{"https://index.docker.io/v1/":{"auth":"' + authToken + '"}}}'
 
-sh """
-    set -ex
-    echo "==== Jenkins Pod에서 Dockerfile 위치 검색 ===="
-    find ${env.WORKSPACE} -name Dockerfile
-    echo "==== Jenkins Pod에서 현재 작업 디렉토리 파일 목록 ===="
-    ls -l ${env.WORKSPACE}
-    echo "--- Remotely executing Kaniko build ---"
-    kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
-      --dockerfile=Dockerfile \
-      --context=${env.WORKSPACE} \
-      --destination=${IMAGE_NAME}:${IMAGE_TAG} \
-      --cache=true \
-      --build-arg DOCKER_CONFIG_JSON='${dockerConfigJson}'
-"""
+                        sh """
+                            set -ex
+                            echo "==== Jenkins Pod에서 Dockerfile 위치 검색 ===="
+                            find ${env.WORKSPACE} -name Dockerfile
+                            echo "==== Jenkins Pod에서 현재 작업 디렉토리 파일 목록 ===="
+                            ls -l ${env.WORKSPACE}
+
+                            echo "==== Kaniko Pod에서 파일 목록 확인 ===="
+                            kubectl exec kaniko-builder --namespace jenkins -- ls -l /home/jenkins/agent/workspace/jenkins-pipline-kaniko
+
+                            echo "==== Kaniko Pod에서 Dockerfile 위치 검색 ===="
+                            kubectl exec kaniko-builder --namespace jenkins -- find /home/jenkins/agent/workspace/jenkins-pipline-kaniko -name Dockerfile
+
+
+                            echo "--- Remotely executing Kaniko build ---"
+                            kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \\
+                              --dockerfile=Dockerfile \\
+                              --context=${env.WORKSPACE} \\
+                              --destination=${IMAGE_NAME}:${IMAGE_TAG} \\
+                              --cache=true \\
+                              --build-arg DOCKER_CONFIG_JSON='${dockerConfigJson}'
+                        """
                     }
                 }
             }
