@@ -89,6 +89,9 @@ sh """
     kubectl get pvc -n jenkins
     kubectl describe pvc jenkins-pv-claim -n jenkins
     
+    echo "==== 현재 Jenkins 파이프라인 Pod의 PVC 확인 ===="
+    kubectl get pod -n jenkins -o yaml | grep -A 10 -B 10 "jenkins-pipline"
+    
     echo "--- Remotely executing Kaniko build ---"
     kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
       --dockerfile=Dockerfile \
