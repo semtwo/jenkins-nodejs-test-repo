@@ -82,6 +82,13 @@ sh """
     echo "==== Kaniko Pod에서 전체 경로 검색 ===="
     kubectl exec kaniko-builder --namespace jenkins -- find /home/jenkins/agent -name Dockerfile || echo "Kaniko Pod에서 Dockerfile을 찾을 수 없음"
     
+    echo "==== Kaniko Pod에서 /home/jenkins/agent 디렉토리 확인 ===="
+    kubectl exec kaniko-builder --namespace jenkins -- ls -la /home/jenkins/agent || echo "Kaniko Pod에서 /home/jenkins/agent 디렉토리가 없음"
+    
+    echo "==== PVC 상태 확인 ===="
+    kubectl get pvc -n jenkins
+    kubectl describe pvc jenkins-pv-claim -n jenkins
+    
     echo "--- Remotely executing Kaniko build ---"
     kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \
       --dockerfile=Dockerfile \
