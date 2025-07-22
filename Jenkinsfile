@@ -34,8 +34,9 @@ spec:
 
   volumes:
     - name: workspace-volume
-      persistentVolumeClaim:
-        claimName: jenkins-pv-claim
+      hostPath:
+        path: /tmp/jenkins-workspace
+        type: DirectoryOrCreate
     - name: tools
       emptyDir: {}
 """
@@ -73,10 +74,10 @@ spec:
                             ls -l ${env.WORKSPACE}
 
                             echo "==== Kaniko Pod에서 파일 목록 확인 ===="
-                            kubectl exec kaniko-builder --namespace jenkins -- ls -l /home/jenkins/agent/workspace/jenkins-pipline-kaniko
+                            kubectl exec kaniko-builder --namespace jenkins -- ls -l ${env.WORKSPACE}
 
                             echo "==== Kaniko Pod에서 Dockerfile 위치 검색 ===="
-                            kubectl exec kaniko-builder --namespace jenkins -- find /home/jenkins/agent/workspace/jenkins-pipline-kaniko -name Dockerfile
+                            kubectl exec kaniko-builder --namespace jenkins -- find ${env.WORKSPACE} -name Dockerfile
 
                             echo "--- Remotely executing Kaniko build ---"
                             kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \\

@@ -18,5 +18,6 @@ spec:
 
   volumes:
   - name: shared-workspace
-    persistentVolumeClaim:
-      claimName: jenkins-pv-claim
+    hostPath:
+      path: /tmp/jenkins-workspace
+      type: DirectoryOrCreate

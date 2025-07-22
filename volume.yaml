@@ -1,3 +1,7 @@
+# hostPath 방식을 사용하는 경우 이 파일은 필요 없음
+# 대신 Jenkins Deployment에서 직접 hostPath 볼륨 사용
+
+# 만약 PV를 계속 사용하고 싶다면:
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
 metadata:
@@ -21,8 +25,8 @@ spec:
     storage: 10Gi
   accessModes:
     - ReadWriteOnce
-  local:
-    path: /mnt
+  hostPath:
+    path: /tmp/jenkins-home
   nodeAffinity:
     required:
       nodeSelectorTerms:
