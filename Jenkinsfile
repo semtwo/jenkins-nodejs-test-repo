@@ -22,11 +22,12 @@ podTemplate(
 
         stage('Setup Tools') {
             sh '''
-                # kubectl 설치
+                # kubectl을 현재 디렉토리에 설치
                 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                 chmod +x kubectl
-                sudo mv kubectl /usr/local/bin/
-                kubectl version --client
+                # PATH에 현재 디렉토리 추가
+                export PATH="${PWD}:${PATH}"
+                ./kubectl version --client
             '''
         }
 
@@ -44,19 +45,22 @@ podTemplate(
 
                     sh """
                         set -ex
+                        # PATH에 kubectl 경로 추가
+                        export PATH="${PWD}:${PATH}"
+                        
                         echo "==== Jenkins Pod에서 Dockerfile 위치 검색 ===="
                         find ${env.WORKSPACE} -name Dockerfile
                         echo "==== Jenkins Pod에서 현재 작업 디렉토리 파일 목록 ===="
                         ls -l ${env.WORKSPACE}
 
                         echo "==== Kaniko Pod에서 파일 목록 확인 ===="
-                        kubectl exec kaniko-builder --namespace jenkins -- ls -l ${env.WORKSPACE}
+                        ./kubectl exec kaniko-builder --namespace jenkins -- ls -l ${env.WORKSPACE}
 
                         echo "==== Kaniko Pod에서 Dockerfile 위치 검색 ===="
-                        kubectl exec kaniko-builder --namespace jenkins -- find ${env.WORKSPACE} -name Dockerfile
+                        ./kubectl exec kaniko-builder --namespace jenkins -- find ${env.WORKSPACE} -name Dockerfile
 
                         echo "--- Remotely executing Kaniko build ---"
-                        kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \\
+                        ./kubectl exec kaniko-builder --namespace jenkins -- /kaniko/executor \\
                           --dockerfile=Dockerfile \\
                           --context=${env.WORKSPACE} \\
                           --destination=${env.IMAGE_NAME}:${env.IMAGE_TAG} \\
@@ -68,8 +72,11 @@ podTemplate(
         }
 
         stage('Update Manifest') {
-            sh "sed -i 's|image: .*|image: ${env.IMAGE_NAME}:${env.IMAGE_TAG}|g' deployment.yaml"
-            echo "Updated deployment.yaml with new image: ${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+            sh """
+                export PATH="${PWD}:${PATH}"
+                sed -i 's|image: .*|image: ${env.IMAGE_NAME}:${env.IMAGE_TAG}|g' deployment.yaml
+                echo "Updated deployment.yaml with new image: ${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+            """
         }
 
         stage('Deploy to Kubernetes') {
@@ -77,10 +84,11 @@ podTemplate(
                 file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')
             ]) {
                 sh '''
+                  export PATH="${PWD}:${PATH}"
                   export KUBECONFIG=${KUBECONFIG_FILE}
                   echo "--- Applying manifests ---"
-                  kubectl apply -f deployment.yaml
-                  kubectl apply -f service.yaml
+                  ./kubectl apply -f deployment.yaml
+                  ./kubectl apply -f service.yaml
                 '''
                 echo "Deployment successful!"
             }
