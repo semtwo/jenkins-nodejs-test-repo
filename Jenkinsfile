@@ -23,7 +23,7 @@ spec:
             name: 'kaniko', 
             image: 'gcr.io/kaniko-project/executor:debug', 
             command: 'sh', 
-            args: ['-c', 'sleep 3600'], 
+            args: '-c sleep 3600', 
             volumeMounts: [
                 [mountPath: '/workspace', name: 'workspace-volume'], 
                 [mountPath: '/kaniko/.docker', name: 'docker-config']
