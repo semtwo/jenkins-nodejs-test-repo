@@ -55,19 +55,19 @@ spec:
             }
             
             stage('Authenticate Docker') {
-                container('jnlp') { /
+                container('jnlp') {
                     sh """
-                        set -ex                        
-                        # DOCKER_USER, DOCKER_PASS는 withCredentials에서 주입됨
-                        mkdir -p /home/jenkins/agent/workspace/jenkins-pipline-kaniko/.docker/
+                        set -ex
                         
-                        # .docker/config.json 생성
-                        echo "{\\"auths\\": {\\"$DOCKER_REGISTRY_URL\\": {\\"$AUTH\\": \\"$DOCKER_AUTH_BASE64\\"}}}" | \\
-                        jq --arg user "\$DOCKER_USER" --arg pass "\$DOCKER_PASS" \\
-                        '.auths["https://index.docker.io/v1/"].auth = ((\$user + ":" + \$pass) | @base64)' \\
-                        > /home/jenkins/agent/workspace/jenkins-pipline-kaniko/.docker/config.json
+                        mkdir -p \${WORKSPACE}/.docker/
                         
-                        cp /home/jenkins/agent/workspace/jenkins-pipline-kaniko/.docker/config.json /kaniko/.docker/config.json
+                        DOCKER_REGISTRY_URL="https://index.docker.io/v1/"
+                        
+                        DOCKER_AUTH_BASE64=\$(echo -n "\$DOCKER_USER:\$DOCKER_PASS" | base64)
+
+                        echo "{\\"auths\\": {\\"\$DOCKER_REGISTRY_URL\\": {\\"auth\\": \\"\$DOCKER_AUTH_BASE64\\"}}}" > \${WORKSPACE}/.docker/config.json
+                        
+                        cp \${WORKSPACE}/.docker/config.json /kaniko/.docker/config.json
                         
                         echo "Docker configuration file created successfully."
                     """
