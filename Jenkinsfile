@@ -14,8 +14,8 @@ spec:
         containerTemplate(
             name: 'jnlp', 
             image: 'jenkins/inbound-agent:jdk17', // 성공 로그의 'main' 컨테이너 역할
-            command: 'sleep', 
-            args: '99d',
+            // command: 'sleep', 
+            // args: '99d',
             ttyEnabled: true
         ),
         // Kaniko 컨테이너를 여기에 추가하는 대신, 별도 Pod로 실행합니다.
