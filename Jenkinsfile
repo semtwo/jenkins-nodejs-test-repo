@@ -76,7 +76,8 @@ spec:
 
             stage('Build & Push with Kaniko') {
                 container('kaniko') {
-                    sh "set -ex && /kaniko/executor --dockerfile=\${WORKSPACE}/Dockerfile --context=\${WORKSPACE} --destination=${IMAGE_NAME}:${CURRENT_IMAGE_TAG} --cache=true --dockerfile-config=/kaniko/.docker/config.json"
+                    // **최종 수정**: --dockerfile-config 제거
+                    sh "set -ex && /kaniko/executor --dockerfile=\${WORKSPACE}/Dockerfile --context=\${WORKSPACE} --destination=${IMAGE_NAME}:${CURRENT_IMAGE_TAG} --cache=true"
                 }
             }
             
