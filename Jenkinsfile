@@ -56,21 +56,7 @@ spec:
             
             stage('Authenticate Docker') {
                 container('jnlp') {
-                    sh """
-                        set -ex
-                        
-                        mkdir -p \${WORKSPACE}/.docker/
-                        
-                        DOCKER_REGISTRY_URL="https://index.docker.io/v1/"
-                        
-                        DOCKER_AUTH_BASE64=\$(echo -n "\$DOCKER_USER:\$DOCKER_PASS" | base64)
-
-                        echo "{\\"auths\\": {\\"\$DOCKER_REGISTRY_URL\\": {\\"auth\\": \\"\$DOCKER_AUTH_BASE64\\"}}}" > \${WORKSPACE}/.docker/config.json
-                        
-                        cp \${WORKSPACE}/.docker/config.json /kaniko/.docker/config.json
-                        
-                        echo "Docker configuration file created successfully."
-                    """
+                   sh "set -ex && /kaniko/executor --dockerfile=\${WORKSPACE}/Dockerfile --context=\${WORKSPACE} --destination=${IMAGE_NAME}:${CURRENT_IMAGE_TAG} --cache=true --dockerfile-config=/kaniko/.docker/config.json"
                 }
             }
 
